@@ -16,7 +16,7 @@
 /**
  * Commands helper for the Moodle tiny_gapfill plugin.
  *
- * @module      plugintype_pluginname/commands
+ * @module      tiny_gapfill/commands
  * @copyright   2024 Marcus Green
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -59,6 +59,13 @@ export const getSetup = async() => {
     ]);
 
     return (editor) => {
+
+        // Check whether we are editing a question.
+        const body = document.querySelector('body#page-question-type-gapfill form');
+        // And if the editor is used on the question text.
+        if (!body || editor.id.indexOf('questiontext') === -1) {
+            return;
+        }
         // Register the Moodle SVG as an icon suitable for use as a TinyMCE toolbar button.
         editor.ui.registry.addIcon(icon, buttonImage.html);
 

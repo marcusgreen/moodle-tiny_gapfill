@@ -16,7 +16,7 @@
 /**
  * Common values helper for the Moodle tiny_gapfill plugin.
  *
- * @module      plugintype_pluginname/common
+ * @module      tiny_gapfill/common
  * @copyright   2024 Marcus Green
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */

@@ -16,7 +16,7 @@
 /**
  * Options helper for the Moodle tiny_gapfill plugin.
  *
- * @module      plugintype_pluginname/options
+ * @module      tiny_gapfill/options
  * @copyright   2024 Marcus Green
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
