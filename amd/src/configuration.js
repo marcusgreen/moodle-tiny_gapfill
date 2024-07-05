@@ -22,8 +22,8 @@
  */
 
 import {
-    startdemoButtonName,
-    startdemoMenuItemName,
+    gapfillButtonName,
+    gapfillMenuItemName,
 } from './common';
 
 import {
@@ -34,7 +34,7 @@ import {
 const getToolbarConfiguration = (instanceConfig) => {
     let toolbar = instanceConfig.toolbar;
     toolbar = addToolbarButtons(toolbar, 'content', [
-        startdemoButtonName,
+        gapfillButtonName,
     ]);
 
     return toolbar;
@@ -43,7 +43,7 @@ const getToolbarConfiguration = (instanceConfig) => {
 const getMenuConfiguration = (instanceConfig) => {
     let menu = instanceConfig.menu;
     menu = addMenubarItem(menu, 'file', [
-        startdemoMenuItemName,
+        gapfillMenuItemName,
     ].join(' '));
 
     return menu;

@@ -25,8 +25,8 @@ import {getButtonImage} from 'editor_tiny/utils';
 import {get_string as getString} from 'core/str';
 import {
     component,
-    startdemoButtonName,
-    startdemoMenuItemName,
+    gapfillButtonName,
+    gapfillMenuItemName,
     icon,
 } from './common';
 
@@ -49,12 +49,12 @@ const handleAction = (editor) => {
  */
 export const getSetup = async() => {
     const [
-        startdemoButtonNameTitle,
-        startdemoMenuItemNameTitle,
+        gapfillButtonNameTitle,
+        gapfillMenuItemNameTitle,
         buttonImage,
     ] = await Promise.all([
-        getString('button_startdemo', component),
-        getString('menuitem_startdemo', component),
+        getString('button_gapfill', component),
+        getString('menuitem_gapfill', component),
         getButtonImage('icon', component),
     ]);
 
@@ -69,18 +69,18 @@ export const getSetup = async() => {
         // Register the Moodle SVG as an icon suitable for use as a TinyMCE toolbar button.
         editor.ui.registry.addIcon(icon, buttonImage.html);
 
-        // Register the startdemo Toolbar Button.
-        editor.ui.registry.addButton(startdemoButtonName, {
+        // Register the gapfill Toolbar Button.
+        editor.ui.registry.addButton(gapfillButtonName, {
             icon,
-            tooltip: startdemoButtonNameTitle,
+            tooltip: gapfillButtonNameTitle,
             onAction: () => handleAction(editor),
         });
 
-        // Add the startdemo Menu Item.
+        // Add the gapfill Menu Item.
         // This allows it to be added to a standard menu, or a context menu.
-        editor.ui.registry.addMenuItem(startdemoMenuItemName, {
+        editor.ui.registry.addMenuItem(gapfillMenuItemName, {
             icon,
-            text: startdemoMenuItemNameTitle,
+            text: gapfillMenuItemNameTitle,
             onAction: () => handleAction(editor),
         });
     };

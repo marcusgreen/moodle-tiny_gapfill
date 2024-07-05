@@ -27,6 +27,6 @@ export default {
     component,
     pluginName: `${component}/plugin`,
     icon: component,
-    startdemoButtonName: `${component}_startdemo`,
-    startdemoMenuItemName: `${component}_startdemo`,
+    gapfillButtonName: `${component}_gapfill`,
+    gapfillMenuItemName: `${component}_gapfill`,
 };

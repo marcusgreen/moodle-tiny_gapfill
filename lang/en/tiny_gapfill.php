@@ -25,7 +25,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$string['button_startdemo'] = 'Start demo';
-$string['menuitem_startdemo'] = 'Start the demo';
+$string['button_gapfill'] = 'Gapfill';
+$string['menuitem_gapfill'] = 'Gapfill';
 $string['pluginname'] = 'gapfill Plugin';
 $string['privacy:metadata'] = 'gapfill Plugin does not store any personal data';
