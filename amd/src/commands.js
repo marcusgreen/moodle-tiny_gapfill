@@ -23,6 +23,8 @@
 
 import {getButtonImage} from 'editor_tiny/utils';
 import {get_string as getString} from 'core/str';
+import {handleAction} from 'tiny_gapfill/ui';
+
 import {
     component,
     gapfillButtonName,
@@ -30,14 +32,15 @@ import {
     icon,
 } from './common';
 
-/**
- * Handle the action for your plugin.
- * @param {TinyMCE.editor} editor The tinyMCE editor instance.
- */
-const handleAction = (editor) => {
-    // TODO Handle the action.
-    window.console.log(editor);
-};
+// /**
+//  * Handle the action for your plugin.
+//  * @param {TinyMCE.editor} editor The tinyMCE editor instance.
+//  */
+// const handleAction = (editor) => {
+//     // TODO Handle the action.
+//     window.console.log(editor);
+//     window.console.log('whale oil');
+// };
 
 /**
  * Get the setup function for the buttons.

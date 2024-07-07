@@ -29,7 +29,7 @@ import GapfillModal from 'tiny_gapfill/modal';
  * @param {TinyMCE} editor
  */
 export const handleAction = (editor) => {
-       // displayDialogue(editor);
+       displayDialogue();
 };
 
 /**
