@@ -24,6 +24,7 @@ import {get_string as getString} from 'core/str';
 import {component, buttonName, icon} from 'tiny_gapfill/common';
 import ModalFactory from 'core/modal_factory';
 import ModalEvents from 'core/modal_events';
+import {getTinyMCE} from 'editor_tiny/loader';
 
 // 🛑 STATE VARIABLE: Tracks whether the custom mode is active.
 let isGapfillModeActive = false;
@@ -86,42 +87,117 @@ const applyGapfillHighlight = (editor) => {
 };
 
 /**
- * Display a modal dialog with the gap content - similar to tiny_cloze plugin
+ * Display a modal dialog with gap settings - similar to the image provided
  * @param {String} gapText - The text content of the clicked gap
+ * @param {Object} editor - TinyMCE editor instance
  */
-const displayGapDialog = async(gapText) => {
-    // Get the modal title string
-    const modalTitle = await getString('gapclicked', component);
+const displayGapDialog = async(gapText, editor) => {
+    // Get string for modal title
+    const modalTitle = await getString('gapsettings', component);
 
-    // Create modal body HTML
+    // Get TinyMCE instance
+    const tinymce = await getTinyMCE();
+
+    // Create modal body HTML with TinyMCE editors for feedback fields
     const bodyContent = `
         <div class="container-fluid">
-            <div class="form-group row">
-                <label class="col-md-3 col-form-label">Gap text:</label>
-                <div class="col-md-9">
-                    <input type="text" class="form-control" value="${gapText}" readonly />
+            <div class="form-group row mb-3">
+                <label class="col-md-12 col-form-label font-weight-bold">Feedback for correct.</label>
+                <div class="col-md-12">
+                    <div id="gapfill-feedback-correct" class="form-control" style="min-height: 150px; border: 1px solid #ced4da;">
+                    </div>
+                </div>
+            </div>
+            <div class="form-group row mb-3">
+                <label class="col-md-12 col-form-label font-weight-bold">Feedback for incorrect.</label>
+                <div class="col-md-12">
+                    <div id="gapfill-feedback-incorrect" class="form-control" style="min-height: 150px; border: 1px solid #ced4da;">
+                    </div>
                 </div>
             </div>
         </div>
     `;
 
-    // Create and show modal using ModalFactory (similar to tiny_cloze)
+    // Create and show modal using ModalFactory
     const modal = await ModalFactory.create({
         type: ModalFactory.types.SAVE_CANCEL,
-        title: modalTitle,
+        title: `Add Gap settings: ${gapText}`,
         body: bodyContent,
-        large: false,
+        large: true,
     });
-
-    // Hide the save button, only show cancel/close
-    modal.setButtonText('save', '');
-    modal.getRoot().find('[data-action="save"]').addClass('hidden');
 
     // Show the modal
     modal.show();
 
-    // Handle modal events
+    // After modal is shown, initialize TinyMCE editors for the feedback fields
+    modal.getRoot().on(ModalEvents.shown, async() => {
+        // Wait a moment for DOM to be ready
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Initialize TinyMCE for feedback correct
+        tinymce.init({
+            selector: '#gapfill-feedback-correct',
+            inline: true,
+            menubar: false,
+            toolbar: 'undo redo | formatselect | bold italic | bullist numlist | link unlink',
+            plugins: 'lists link',
+            setup: (ed) => {
+                ed.on('init', () => {
+                    ed.setContent('');
+                });
+            }
+        });
+
+        // Initialize TinyMCE for feedback incorrect
+        tinymce.init({
+            selector: '#gapfill-feedback-incorrect',
+            inline: true,
+            menubar: false,
+            toolbar: 'undo redo | formatselect | bold italic | bullist numlist | link unlink',
+            plugins: 'lists link',
+            setup: (ed) => {
+                ed.on('init', () => {
+                    ed.setContent('');
+                });
+            }
+        });
+    });
+
+    // Handle save button
+    modal.getRoot().on(ModalEvents.save, () => {
+        // Get content from TinyMCE editors
+        let correctFeedback = '';
+        let incorrectFeedback = '';
+
+        const correctEditor = tinymce.get('gapfill-feedback-correct');
+        const incorrectEditor = tinymce.get('gapfill-feedback-incorrect');
+
+        if (correctEditor) {
+            correctFeedback = correctEditor.getContent();
+        }
+        if (incorrectEditor) {
+            incorrectFeedback = incorrectEditor.getContent();
+        }
+
+        // Here you would save the feedback data
+        // For now, just log it
+        window.console.log('Gap:', gapText);
+        window.console.log('Correct feedback:', correctFeedback);
+        window.console.log('Incorrect feedback:', incorrectFeedback);
+    });
+
+    // Handle modal cleanup
     modal.getRoot().on(ModalEvents.hidden, () => {
+        // Clean up TinyMCE editors
+        const correctEditor = tinymce.get('gapfill-feedback-correct');
+        const incorrectEditor = tinymce.get('gapfill-feedback-incorrect');
+
+        if (correctEditor) {
+            correctEditor.remove();
+        }
+        if (incorrectEditor) {
+            incorrectEditor.remove();
+        }
         modal.destroy();
     });
 };
@@ -146,8 +222,8 @@ const registerClickHandler = (editor) => {
             const match = fullText.match(/\[([^\]]+)\]/);
             const gapText = match ? match[1] : fullText;
 
-            // Show modal dialog similar to tiny_cloze
-            displayGapDialog(gapText);
+            // Show modal dialog similar to the image
+            displayGapDialog(gapText, editor);
         }
     };
 
