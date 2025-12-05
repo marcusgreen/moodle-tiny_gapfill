@@ -22,6 +22,8 @@
 import {getButtonImage} from 'editor_tiny/utils';
 import {get_string as getString} from 'core/str';
 import {component, buttonName, icon} from 'tiny_gapfill/common';
+import ModalFactory from 'core/modal_factory';
+import ModalEvents from 'core/modal_events';
 
 // 🛑 STATE VARIABLE: Tracks whether the custom mode is active.
 let isGapfillModeActive = false;
@@ -84,6 +86,47 @@ const applyGapfillHighlight = (editor) => {
 };
 
 /**
+ * Display a modal dialog with the gap content - similar to tiny_cloze plugin
+ * @param {String} gapText - The text content of the clicked gap
+ */
+const displayGapDialog = async(gapText) => {
+    // Get the modal title string
+    const modalTitle = await getString('gapclicked', component);
+
+    // Create modal body HTML
+    const bodyContent = `
+        <div class="container-fluid">
+            <div class="form-group row">
+                <label class="col-md-3 col-form-label">Gap text:</label>
+                <div class="col-md-9">
+                    <input type="text" class="form-control" value="${gapText}" readonly />
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Create and show modal using ModalFactory (similar to tiny_cloze)
+    const modal = await ModalFactory.create({
+        type: ModalFactory.types.SAVE_CANCEL,
+        title: modalTitle,
+        body: bodyContent,
+        large: false,
+    });
+
+    // Hide the save button, only show cancel/close
+    modal.setButtonText('save', '');
+    modal.getRoot().find('[data-action="save"]').addClass('hidden');
+
+    // Show the modal
+    modal.show();
+
+    // Handle modal events
+    modal.getRoot().on(ModalEvents.hidden, () => {
+        modal.destroy();
+    });
+};
+
+/**
  * Register click event handler for gapfill items
  * @param {Object} editor - TinyMCE editor instance
  */
@@ -103,25 +146,8 @@ const registerClickHandler = (editor) => {
             const match = fullText.match(/\[([^\]]+)\]/);
             const gapText = match ? match[1] : fullText;
 
-            // Show dialog with the clicked text
-            editor.windowManager.open({
-                title: 'Gap Fill Content',
-                body: {
-                    type: 'panel',
-                    items: [
-                        {
-                            type: 'htmlpanel',
-                            html: `<p><strong>Clicked content:</strong></p><p>${editor.dom.encode(gapText)}</p>`
-                        }
-                    ]
-                },
-                buttons: [
-                    {
-                        type: 'cancel',
-                        text: 'Close'
-                    }
-                ]
-            });
+            // Show modal dialog similar to tiny_cloze
+            displayGapDialog(gapText);
         }
     };
 
