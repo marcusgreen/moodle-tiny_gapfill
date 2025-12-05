@@ -7,7 +7,7 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY and FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
@@ -176,11 +176,25 @@ const displayGapDialog = async(gapText) => {
             incorrectFeedback = incorrectEditor.getContent();
         }
 
-        // Here you would save the feedback data
-        // For now, just log it
-        window.console.log('Gap:', gapText);
-        window.console.log('Correct feedback:', correctFeedback);
-        window.console.log('Incorrect feedback:', incorrectFeedback);
+        // Create JSON object with the feedback data
+        const feedbackData = {
+            gap: gapText,
+            correctFeedback: correctFeedback,
+            incorrectFeedback: incorrectFeedback
+        };
+
+        // JSON encode the data
+        const jsonEncoded = JSON.stringify(feedbackData);
+
+        // Log the JSON encoded data
+        window.console.log('JSON Encoded Feedback Data:', jsonEncoded);
+
+        // You can now use this JSON data to:
+        // - Send to server via AJAX
+        // - Store in a hidden form field
+        // - Update the gap element with data attributes
+        // Example: Save to a hidden input field
+        // document.getElementById('id_gapfeedback').value = jsonEncoded;
     });
 
     // Handle modal cleanup
