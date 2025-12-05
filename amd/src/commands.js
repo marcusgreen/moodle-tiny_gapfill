@@ -29,6 +29,9 @@ let isGapfillModeActive = false;
 // 💾 CACHE: Store the clean, original HTML before highlighting.
 let cachedOriginalContent = '';
 
+// 🎯 CLICK HANDLER: Store reference to the click handler for cleanup
+let clickHandler = null;
+
 /**
  * Apply inverse highlighting to text nodes (grey background for all, white for gaps)
  * This uses DOM traversal to preserve existing formatting
@@ -66,9 +69,9 @@ const applyGapfillHighlight = (editor) => {
             // Create a temporary container
             const span = document.createElement('span');
 
-            // 2. Set the background of the bracketed content to WHITE to clear the grey
+            // 2. Set the background of the bracketed content to WHITE and add clickable class
             span.innerHTML = text.replace(/\[([^\]]+)\]/g,
-                '<span class="gapfill-highlight" style="background-color: white;">[$1]</span>');
+                '<span class="gapfill-highlight gapfill-clickable" style="background-color: white; cursor: pointer;">[$1]</span>');
 
             // Replace the text node with the new content
             const parent = textNode.parentNode;
@@ -81,6 +84,63 @@ const applyGapfillHighlight = (editor) => {
 };
 
 /**
+ * Register click event handler for gapfill items
+ * @param {Object} editor - TinyMCE editor instance
+ */
+const registerClickHandler = (editor) => {
+    clickHandler = (e) => {
+        const target = e.target;
+
+        // Check if clicked element has the gapfill-clickable class
+        if (target.classList.contains('gapfill-clickable')) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Extract the text content (including brackets)
+            const fullText = target.textContent;
+
+            // Extract just the content between brackets
+            const match = fullText.match(/\[([^\]]+)\]/);
+            const gapText = match ? match[1] : fullText;
+
+            // Show dialog with the clicked text
+            editor.windowManager.open({
+                title: 'Gap Fill Content',
+                body: {
+                    type: 'panel',
+                    items: [
+                        {
+                            type: 'htmlpanel',
+                            html: `<p><strong>Clicked content:</strong></p><p>${editor.dom.encode(gapText)}</p>`
+                        }
+                    ]
+                },
+                buttons: [
+                    {
+                        type: 'cancel',
+                        text: 'Close'
+                    }
+                ]
+            });
+        }
+    };
+
+    // Add click event listener to editor body
+    editor.getBody().addEventListener('click', clickHandler);
+};
+
+/**
+ * Unregister click event handler
+ * @param {Object} editor - TinyMCE editor instance
+ */
+const unregisterClickHandler = (editor) => {
+    if (clickHandler) {
+        editor.getBody().removeEventListener('click', clickHandler);
+        clickHandler = null;
+    }
+};
+
+/**
  * Restores the editor to its original content and default background.
  * @param {Object} editor - TinyMCE editor instance
  */
@@ -90,6 +150,9 @@ const restoreDefaultState = (editor) => {
 
     // 2. Restore the editor body's default background
     editor.getBody().style.backgroundColor = '';
+
+    // 3. Remove click handler
+    unregisterClickHandler(editor);
 };
 
 
@@ -127,10 +190,13 @@ export const getSetup = async() => {
                     // 2. Apply highlighting (modifies the DOM)
                     applyGapfillHighlight(editor);
 
-                    // 3. SET READ-ONLY MODE (This is the only reliable way to disable typing)
+                    // 3. Register click handler for bracketed content
+                    registerClickHandler(editor);
+
+                    // 4. SET READ-ONLY MODE (This is the only reliable way to disable typing)
                     editor.mode.set('readonly');
 
-                    // 4. FIX: Re-enable the button immediately after TinyMCE disables it.
+                    // 5. FIX: Re-enable the button immediately after TinyMCE disables it.
                     api.setEnabled(true);
 
                     isGapfillModeActive = true;
@@ -175,6 +241,7 @@ export const getSetup = async() => {
                     // ACTIVATE MODE
                     cachedOriginalContent = editor.getContent();
                     applyGapfillHighlight(editor);
+                    registerClickHandler(editor);
                     editor.mode.set('readonly'); // Disable typing
                     // No need to re-enable menu items, only toolbar buttons.
                     isGapfillModeActive = true;
