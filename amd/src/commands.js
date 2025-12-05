@@ -7,29 +7,35 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+// along with Moodle. If not, see <http://www.gnu.org/licenses/>.
 /**
  * Tiny gapfill commands
  *
- * @module     tiny_gapfill/commands
- * @copyright  2025 2024 Marcus Green
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @module tiny_gapfill/commands
+ * @copyright 2025 2024 Marcus Green
+ * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-import {getButtonImage} from 'editor_tiny/utils';
-import {get_string as getString} from 'core/str';
-import {component, buttonName, icon} from 'tiny_gapfill/common';
+import {getButtonImage } from 'editor_tiny/utils';
+import {get_string as getString } from 'core/str';
+import {component, buttonName, icon } from 'tiny_gapfill/common';
 
 /**
- * Highlight text between brackets with grey background
+ * Clear background for text between brackets (to stand out against a grey background)
  * This uses DOM traversal to preserve existing formatting
  * @param {Object} editor - TinyMCE editor instance
  */
 const highlightGapfillText = (editor) => {
     const body = editor.getBody();
+
+    // 1. Set the overall editor background to Grey (the inverse default)
+    // NOTE: This sets the background on the content body, which will color all text nodes.
+    // CSS is generally better for this, but this achieves the effect programmatically.
+    body.style.backgroundColor = '#e0e0e0';
+
     const walker = document.createTreeWalker(
         body,
         NodeFilter.SHOW_TEXT,
@@ -56,8 +62,11 @@ const highlightGapfillText = (editor) => {
         if (regex.test(text)) {
             // Create a temporary container
             const span = document.createElement('span');
+
+            // 2. Change the inline style to WHITE/TRANSPARENT to clear the background
+            // for the bracketed text, making it stand out from the grey body.
             span.innerHTML = text.replace(/\[([^\]]+)\]/g,
-                '<span style="background-color: #e0e0e0;">[$1]</span>');
+                '<span style="background-color: white;">[$1]</span>'); // Changed #e0e0e0 to white
 
             // Replace the text node with the new content
             const parent = textNode.parentNode;
@@ -69,7 +78,7 @@ const highlightGapfillText = (editor) => {
     });
 };
 
-export const getSetup = async() => {
+export const getSetup = async () => {
     const [
         buttonTitle,
         buttonImage,
