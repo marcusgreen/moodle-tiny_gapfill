@@ -21,9 +21,14 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+export const component = 'tiny_gapfill';
+export const pluginName = `${component}/plugin`;
+export const icon = 'tiny_gapfill';
+export const buttonName = 'tiny_gapfill';
+
 export default {
-    component: 'tiny_gapfill',
-    pluginName: 'tiny_gapfill/gapfill',
-    icon: 'tiny_gapfill',
-    buttonName: 'tiny_gapfill',
+    component,
+    pluginName,
+    icon,
+    buttonName,
 };

@@ -29,8 +29,11 @@ import * as Options from 'tiny_gapfill/options';
 import * as Commands from 'tiny_gapfill/commands';
 import * as Configuration from './configuration';
 
-// Setup the tiny_gapfill Plugin.
-export default (async() => {
+// Export a Promise that resolves to [pluginName, Configuration].
+// This matches the TinyMCE/Moodle pattern used by other plugins.
+export default new Promise(async (resolve) => {
+    // Note: The PluginManager.add function does not support asynchronous configuration.
+    // Perform any asynchronous configuration here, and then call the PluginManager.add function.
     const [
         tinyMCE,
         setupCommands,
@@ -41,15 +44,17 @@ export default (async() => {
         getPluginMetadata(component, pluginName),
     ]);
 
-    tinyMCE.PluginManager.add(`${component}/plugin`, (editor) => {
+    // Reminder: Any asynchronous code must be run before this point.
+    tinyMCE.PluginManager.add(pluginName, (editor) => {
         // Register options.
         Options.register(editor);
 
         // Setup the Commands (buttons, menu items, and so on).
         setupCommands(editor);
 
+        // Return the pluginMetadata object. This is used by TinyMCE to display a help link for your plugin.
         return pluginMetadata;
     });
 
-    return [`${component}/plugin`, Configuration];
-})();
+    resolve([pluginName, Configuration]);
+});
