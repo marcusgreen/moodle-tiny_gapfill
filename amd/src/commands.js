@@ -112,7 +112,7 @@ export const getSetup = async() => {
             return;
         }
 
-        // 🛑 FIX: Use addToggleButton for proper toggle state management.
+        // Use addToggleButton for proper toggle state management.
         editor.ui.registry.addToggleButton(buttonName, {
             icon,
             tooltip: buttonTitle,
@@ -127,9 +127,11 @@ export const getSetup = async() => {
                     // 2. Apply highlighting (modifies the DOM)
                     applyGapfillHighlight(editor);
 
-                    // 3. 🛑 FIX: Explicitly disable the document's designMode to stop typing.
-                    // This avoids setting the full editor mode to 'readonly', which disables the toolbar.
-                    editor.getDoc().designMode = 'Off';
+                    // 3. SET READ-ONLY MODE (This is the only reliable way to disable typing)
+                    editor.mode.set('readonly');
+
+                    // 4. FIX: Re-enable the button immediately after TinyMCE disables it.
+                    api.setEnabled(true);
 
                     isGapfillModeActive = true;
                     api.setActive(true); // Visually set the button as pressed
@@ -139,17 +141,25 @@ export const getSetup = async() => {
                     // 1. Restore the original HTML and background
                     restoreDefaultState(editor);
 
-                    // 2. 🛑 FIX: Re-enable the document's designMode to allow typing.
-                    editor.getDoc().designMode = 'On';
+                    // 2. Set back to design (editable) mode
+                    editor.mode.set('design');
 
                     isGapfillModeActive = false;
                     api.setActive(false); // Visually set the button as unpressed
+                    // Button is now in 'design' mode, so its enabled state is managed by TinyMCE defaults.
                 }
             },
             onSetup: (api) => {
-                // Ensure the button is always enabled, overriding the editor's default behavior.
-                api.setEnabled(true);
-                api.setActive(isGapfillModeActive);
+                // Initial setup ensures the button is enabled and reflects initial state.
+                // NOTE: We only need to check if it should be active; the enabling/disabling
+                // is handled within onAction now for reliability in readonly mode.
+                if (isGapfillModeActive) {
+                    // If the mode is active when loaded, ensure the button is enabled and active.
+                    api.setEnabled(true);
+                    api.setActive(true);
+                } else {
+                    api.setActive(false);
+                }
 
                 return () => {}; // Cleanup function
             }
@@ -160,17 +170,18 @@ export const getSetup = async() => {
             icon,
             text: buttonTitle,
             onAction: () => {
-                // The menu item logic remains the same.
+                // The menu item logic mirrors the button's logic.
                 if (!isGapfillModeActive) {
                     // ACTIVATE MODE
                     cachedOriginalContent = editor.getContent();
                     applyGapfillHighlight(editor);
-                    editor.getDoc().designMode = 'Off'; // Disable typing
+                    editor.mode.set('readonly'); // Disable typing
+                    // No need to re-enable menu items, only toolbar buttons.
                     isGapfillModeActive = true;
                 } else {
                     // DEACTIVATE MODE
                     restoreDefaultState(editor);
-                    editor.getDoc().designMode = 'On'; // Enable typing
+                    editor.mode.set('design'); // Enable typing
                     isGapfillModeActive = false;
                 }
             },
