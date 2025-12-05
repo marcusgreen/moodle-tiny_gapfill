@@ -12,7 +12,6 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
-
 /**
  * Tiny gapfill commands
  *
@@ -20,11 +19,55 @@
  * @copyright  2025 2024 Marcus Green
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
 import {getButtonImage} from 'editor_tiny/utils';
 import {get_string as getString} from 'core/str';
 import {component, buttonName, icon} from 'tiny_gapfill/common';
-import Notification from 'core/notification';
+
+/**
+ * Highlight text between brackets with grey background
+ * This uses DOM traversal to preserve existing formatting
+ * @param {Object} editor - TinyMCE editor instance
+ */
+const highlightGapfillText = (editor) => {
+    const body = editor.getBody();
+    const walker = document.createTreeWalker(
+        body,
+        NodeFilter.SHOW_TEXT,
+        null,
+        false
+    );
+
+    const nodesToProcess = [];
+    let node;
+
+    // Collect all text nodes
+    // FIX: Assign the node outside and check the condition inside the while loop
+    node = walker.nextNode(); // Assign the first node
+    while (node) { // Check if the node is not null/undefined
+        nodesToProcess.push(node);
+        node = walker.nextNode(); // Assign the next node
+    }
+
+    // Process each text node
+    nodesToProcess.forEach(textNode => {
+        const text = textNode.textContent;
+        const regex = /\[([^\]]+)\]/g;
+
+        if (regex.test(text)) {
+            // Create a temporary container
+            const span = document.createElement('span');
+            span.innerHTML = text.replace(/\[([^\]]+)\]/g,
+                '<span style="background-color: #e0e0e0;">[$1]</span>');
+
+            // Replace the text node with the new content
+            const parent = textNode.parentNode;
+            while (span.firstChild) {
+                parent.insertBefore(span.firstChild, textNode);
+            }
+            parent.removeChild(textNode);
+        }
+    });
+};
 
 export const getSetup = async() => {
     const [
@@ -34,28 +77,32 @@ export const getSetup = async() => {
         getString('buttontitle', component),
         getButtonImage('icon', component),
     ]);
-
     return (editor) => {
         // Register the gapfill icon.
         editor.ui.registry.addIcon(icon, buttonImage.html);
-
+        // Check whether we are editing a Gapfillquestion.
+        const body = document.querySelector(
+            'body#page-question-type-gapfill'
+        );
+        if (!body || editor.id.indexOf('questiontext') === -1) {
+            return;
+        }
         // Register the toolbar Button.
         editor.ui.registry.addButton(buttonName, {
             icon,
             tooltip: buttonTitle,
             onAction: () => {
-                // TODO do the action when toolbar button is pressed.
-                Notification.alert("Plugin tiny_gapfill", "You just pressed a toolbar button");
+                // Highlight text between brackets with grey background
+                highlightGapfillText(editor);
             },
         });
-
         // Register the Menu item.
         editor.ui.registry.addMenuItem(buttonName, {
             icon,
             text: buttonTitle,
             onAction: () => {
-                // TODO do the action when item is selected from the menu.
-                Notification.alert("Plugin tiny_gapfill", "You just selected an item from a menu");
+                // Highlight text between brackets with grey background
+                highlightGapfillText(editor);
             },
         });
     };
