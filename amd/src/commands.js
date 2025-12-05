@@ -15,25 +15,29 @@
 /**
  * Tiny gapfill commands
  *
- * @module tiny_gapfill/commands
- * @copyright 2025 2024 Marcus Green
- * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @module      tiny_gapfill/commands
+ * @copyright  2025 2024 Marcus Green
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-import {getButtonImage } from 'editor_tiny/utils';
-import {get_string as getString } from 'core/str';
-import {component, buttonName, icon } from 'tiny_gapfill/common';
+import {getButtonImage} from 'editor_tiny/utils';
+import {get_string as getString} from 'core/str';
+import {component, buttonName, icon} from 'tiny_gapfill/common';
+
+// 🛑 STATE VARIABLE: Tracks whether the custom mode is active.
+let isGapfillModeActive = false;
+
+// 💾 CACHE: Store the clean, original HTML before highlighting.
+let cachedOriginalContent = '';
 
 /**
- * Clear background for text between brackets (to stand out against a grey background)
+ * Apply inverse highlighting to text nodes (grey background for all, white for gaps)
  * This uses DOM traversal to preserve existing formatting
  * @param {Object} editor - TinyMCE editor instance
  */
-const highlightGapfillText = (editor) => {
+const applyGapfillHighlight = (editor) => {
     const body = editor.getBody();
 
-    // 1. Set the overall editor background to Grey (the inverse default)
-    // NOTE: This sets the background on the content body, which will color all text nodes.
-    // CSS is generally better for this, but this achieves the effect programmatically.
+    // 1. Set the overall editor body background to Grey (this covers all surrounding text and spaces)
     body.style.backgroundColor = '#e0e0e0';
 
     const walker = document.createTreeWalker(
@@ -47,11 +51,10 @@ const highlightGapfillText = (editor) => {
     let node;
 
     // Collect all text nodes
-    // FIX: Assign the node outside and check the condition inside the while loop
-    node = walker.nextNode(); // Assign the first node
-    while (node) { // Check if the node is not null/undefined
+    node = walker.nextNode();
+    while (node) {
         nodesToProcess.push(node);
-        node = walker.nextNode(); // Assign the next node
+        node = walker.nextNode();
     }
 
     // Process each text node
@@ -63,10 +66,9 @@ const highlightGapfillText = (editor) => {
             // Create a temporary container
             const span = document.createElement('span');
 
-            // 2. Change the inline style to WHITE/TRANSPARENT to clear the background
-            // for the bracketed text, making it stand out from the grey body.
+            // 2. Set the background of the bracketed content to WHITE to clear the grey
             span.innerHTML = text.replace(/\[([^\]]+)\]/g,
-                '<span style="background-color: white;">[$1]</span>'); // Changed #e0e0e0 to white
+                '<span class="gapfill-highlight" style="background-color: white;">[$1]</span>');
 
             // Replace the text node with the new content
             const parent = textNode.parentNode;
@@ -78,7 +80,20 @@ const highlightGapfillText = (editor) => {
     });
 };
 
-export const getSetup = async () => {
+/**
+ * Restores the editor to its original content and default background.
+ * @param {Object} editor - TinyMCE editor instance
+ */
+const restoreDefaultState = (editor) => {
+    // 1. Restore the original HTML content to clean up inserted spans
+    editor.setContent(cachedOriginalContent);
+
+    // 2. Restore the editor body's default background
+    editor.getBody().style.backgroundColor = '';
+};
+
+
+export const getSetup = async() => {
     const [
         buttonTitle,
         buttonImage,
@@ -96,23 +111,68 @@ export const getSetup = async () => {
         if (!body || editor.id.indexOf('questiontext') === -1) {
             return;
         }
-        // Register the toolbar Button.
-        editor.ui.registry.addButton(buttonName, {
+
+        // 🛑 FIX: Use addToggleButton for proper toggle state management.
+        editor.ui.registry.addToggleButton(buttonName, {
             icon,
             tooltip: buttonTitle,
-            onAction: () => {
-                // Highlight text between brackets with grey background
-                highlightGapfillText(editor);
-                editor.mode.set('readonly');
+            onAction: (api) => {
+                // 🛑 TOGGLE LOGIC HERE
+                if (!isGapfillModeActive) {
+                    // ACTIVATE MODE
+
+                    // 1. Cache the clean HTML content *before* DOM manipulation
+                    cachedOriginalContent = editor.getContent();
+
+                    // 2. Apply highlighting (modifies the DOM)
+                    applyGapfillHighlight(editor);
+
+                    // 3. 🛑 FIX: Explicitly disable the document's designMode to stop typing.
+                    // This avoids setting the full editor mode to 'readonly', which disables the toolbar.
+                    editor.getDoc().designMode = 'Off';
+
+                    isGapfillModeActive = true;
+                    api.setActive(true); // Visually set the button as pressed
+                } else {
+                    // DEACTIVATE MODE
+
+                    // 1. Restore the original HTML and background
+                    restoreDefaultState(editor);
+
+                    // 2. 🛑 FIX: Re-enable the document's designMode to allow typing.
+                    editor.getDoc().designMode = 'On';
+
+                    isGapfillModeActive = false;
+                    api.setActive(false); // Visually set the button as unpressed
+                }
             },
+            onSetup: (api) => {
+                // Ensure the button is always enabled, overriding the editor's default behavior.
+                api.setEnabled(true);
+                api.setActive(isGapfillModeActive);
+
+                return () => {}; // Cleanup function
+            }
         });
+
         // Register the Menu item.
         editor.ui.registry.addMenuItem(buttonName, {
             icon,
             text: buttonTitle,
             onAction: () => {
-                // Highlight text between brackets with grey background
-                highlightGapfillText(editor);
+                // The menu item logic remains the same.
+                if (!isGapfillModeActive) {
+                    // ACTIVATE MODE
+                    cachedOriginalContent = editor.getContent();
+                    applyGapfillHighlight(editor);
+                    editor.getDoc().designMode = 'Off'; // Disable typing
+                    isGapfillModeActive = true;
+                } else {
+                    // DEACTIVATE MODE
+                    restoreDefaultState(editor);
+                    editor.getDoc().designMode = 'On'; // Enable typing
+                    isGapfillModeActive = false;
+                }
             },
         });
     };
