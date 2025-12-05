@@ -103,6 +103,7 @@ export const getSetup = async () => {
             onAction: () => {
                 // Highlight text between brackets with grey background
                 highlightGapfillText(editor);
+                editor.mode.set('readonly');
             },
         });
         // Register the Menu item.
