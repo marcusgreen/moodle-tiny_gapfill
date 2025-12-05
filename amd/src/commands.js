@@ -1,4 +1,4 @@
-// This file is part of Moodle - http://moodle.org/
+// This file is part of Moodle - http://www.moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -7,7 +7,7 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// MERCHANTABILITY and FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
@@ -89,30 +89,24 @@ const applyGapfillHighlight = (editor) => {
 /**
  * Display a modal dialog with gap settings - similar to the image provided
  * @param {String} gapText - The text content of the clicked gap
- * @param {Object} editor - TinyMCE editor instance
  */
-const displayGapDialog = async(gapText, editor) => {
-    // Get string for modal title
-    const modalTitle = await getString('gapsettings', component);
-
+const displayGapDialog = async(gapText) => {
     // Get TinyMCE instance
     const tinymce = await getTinyMCE();
 
-    // Create modal body HTML with TinyMCE editors for feedback fields
+    // Create modal body HTML with **TEXTAREAS** for feedback fields, as TinyMCE needs a selector target
     const bodyContent = `
         <div class="container-fluid">
             <div class="form-group row mb-3">
-                <label class="col-md-12 col-form-label font-weight-bold">Feedback for correct.</label>
+                <label for="gapfill-feedback-correct" class="col-md-12 col-form-label font-weight-bold">Feedback for correct.</label>
                 <div class="col-md-12">
-                    <div id="gapfill-feedback-correct" class="form-control" style="min-height: 150px; border: 1px solid #ced4da;">
-                    </div>
+                    <textarea id="gapfill-feedback-correct" class="form-control" rows="6"></textarea>
                 </div>
             </div>
             <div class="form-group row mb-3">
-                <label class="col-md-12 col-form-label font-weight-bold">Feedback for incorrect.</label>
+                <label for="gapfill-feedback-incorrect" class="col-md-12 col-form-label font-weight-bold">Feedback for incorrect.</label>
                 <div class="col-md-12">
-                    <div id="gapfill-feedback-incorrect" class="form-control" style="min-height: 150px; border: 1px solid #ced4da;">
-                    </div>
+                    <textarea id="gapfill-feedback-incorrect" class="form-control" rows="6"></textarea>
                 </div>
             </div>
         </div>
@@ -136,28 +130,30 @@ const displayGapDialog = async(gapText, editor) => {
 
         // Initialize TinyMCE for feedback correct
         tinymce.init({
+            // Target the TEXTAREA element
             selector: '#gapfill-feedback-correct',
-            inline: true,
+            // Do not use 'inline: true' for textareas
             menubar: false,
             toolbar: 'undo redo | formatselect | bold italic | bullist numlist | link unlink',
             plugins: 'lists link',
             setup: (ed) => {
                 ed.on('init', () => {
-                    ed.setContent('');
+                    ed.setContent(''); // Clear initial content if needed
                 });
             }
         });
 
         // Initialize TinyMCE for feedback incorrect
         tinymce.init({
+            // Target the TEXTAREA element
             selector: '#gapfill-feedback-incorrect',
-            inline: true,
+            // Do not use 'inline: true' for textareas
             menubar: false,
             toolbar: 'undo redo | formatselect | bold italic | bullist numlist | link unlink',
             plugins: 'lists link',
             setup: (ed) => {
                 ed.on('init', () => {
-                    ed.setContent('');
+                    ed.setContent(''); // Clear initial content if needed
                 });
             }
         });
@@ -169,6 +165,7 @@ const displayGapDialog = async(gapText, editor) => {
         let correctFeedback = '';
         let incorrectFeedback = '';
 
+        // tinymce.get() retrieves the editor instance by its selector ID
         const correctEditor = tinymce.get('gapfill-feedback-correct');
         const incorrectEditor = tinymce.get('gapfill-feedback-incorrect');
 
@@ -223,7 +220,7 @@ const registerClickHandler = (editor) => {
             const gapText = match ? match[1] : fullText;
 
             // Show modal dialog similar to the image
-            displayGapDialog(gapText, editor);
+            displayGapDialog(gapText);
         }
     };
 
