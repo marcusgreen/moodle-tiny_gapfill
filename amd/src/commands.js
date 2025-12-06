@@ -87,10 +87,17 @@ const applyGapfillHighlight = (editor) => {
 };
 
 /**
- * Display a modal dialog with gap settings - similar to the image provided
- * @param {String} gapText - The text content of the clicked gap
+ * Display a modal dialog to allow the user to edit the individual feedback settings for a specific gap.
+ *
+ * @async
+ * @param {Object} editor - The TinyMCE editor instance that contains the question content.
+ * @param {string} fullGapMarker - The complete, unencoded gap marker string currently in the editor (e.g., '[cat]').
+ * This is used to target the exact string for replacement after encoding.
+ * @param {string} gapText - The text content or answer part extracted from between the brackets (e.g., 'cat').
+ * @returns {Promise<void>} A Promise that resolves when the modal is closed and the editor content has been updated
+ * with the encoded feedback, or when the process is cancelled.
  */
-const displayGapDialog = async(gapText) => {
+const displayGapDialog = async(editor, fullGapMarker, gapText) => {
     // Get TinyMCE instance
     const tinymce = await getTinyMCE();
 
@@ -130,71 +137,76 @@ const displayGapDialog = async(gapText) => {
 
         // Initialize TinyMCE for feedback correct
         tinymce.init({
-            // Target the TEXTAREA element
             selector: '#gapfill-feedback-correct',
-            // Do not use 'inline: true' for textareas
             menubar: false,
             toolbar: 'undo redo | formatselect | bold italic | bullist numlist | link unlink',
             plugins: 'lists link',
             setup: (ed) => {
                 ed.on('init', () => {
-                    ed.setContent(''); // Clear initial content if needed
+                    ed.setContent('');
                 });
             }
         });
 
         // Initialize TinyMCE for feedback incorrect
         tinymce.init({
-            // Target the TEXTAREA element
             selector: '#gapfill-feedback-incorrect',
-            // Do not use 'inline: true' for textareas
             menubar: false,
             toolbar: 'undo redo | formatselect | bold italic | bullist numlist | link unlink',
             plugins: 'lists link',
             setup: (ed) => {
                 ed.on('init', () => {
-                    ed.setContent(''); // Clear initial content if needed
+                    ed.setContent('');
                 });
             }
         });
     });
 
-    // Handle save button
+    // Handle save button (OK button clicked)
     modal.getRoot().on(ModalEvents.save, () => {
-        // Get content from TinyMCE editors
-        let correctFeedback = '';
-        let incorrectFeedback = '';
-
-        // tinymce.get() retrieves the editor instance by its selector ID
+        // 1. Get content from TinyMCE editors
         const correctEditor = tinymce.get('gapfill-feedback-correct');
         const incorrectEditor = tinymce.get('gapfill-feedback-incorrect');
 
-        if (correctEditor) {
-            correctFeedback = correctEditor.getContent();
+        // Get content and ensure it's clean HTML (using 'raw' format for cleaner content)
+        const correctFeedback = correctEditor ? correctEditor.getContent({format: 'raw'}).trim() : '';
+        const incorrectFeedback = incorrectEditor ? incorrectEditor.getContent({format: 'raw'}).trim() : '';
+
+        // 2. CONSTRUCT THE ENCODED GAP STRING
+        let encodedContent = gapText; // Start with the plain answer part
+
+        if (correctFeedback !== '') {
+            // Append Correct Feedback code: |cf:
+            encodedContent += '|cf:' + correctFeedback;
         }
-        if (incorrectEditor) {
-            incorrectFeedback = incorrectEditor.getContent();
+        if (incorrectFeedback !== '') {
+            // Append Incorrect Feedback code: |if:
+            encodedContent += '|if:' + incorrectFeedback;
         }
 
-        // Create JSON object with the feedback data
-        const feedbackData = {
-            gap: gapText,
-            correctFeedback: correctFeedback,
-            incorrectFeedback: incorrectFeedback
-        };
+        // The final encoded marker, including brackets:
+        const newFullMarker = '[' + encodedContent + ']'; // e.g., [cat|cf:Good job!|if:Try again.]
 
-        // JSON encode the data
-        const jsonEncoded = JSON.stringify(feedbackData);
+        // 3. REPLACE THE OLD MARKER IN THE TINYMCE EDITOR
+        let currentContent = editor.getContent({format: 'raw'});
 
-        // Log the JSON encoded data
-        window.console.log('JSON Encoded Feedback Data:', jsonEncoded);
+        // Replace the *first* occurrence of the old marker with the new encoded marker.
+        // Since the highlighting is active, only the first occurrence should match the original.
+        let replacedContent = currentContent.replace(fullGapMarker, newFullMarker);
 
-        // You can now use this JSON data to:
-        // - Send to server via AJAX
-        // - Store in a hidden form field
-        // - Update the gap element with data attributes
-        // Example: Save to a hidden input field
-        // document.getElementById('id_gapfeedback').value = jsonEncoded;
+        // Update the editor content
+        editor.setContent(replacedContent);
+
+        // 4. Update state and restore/re-apply highlight mode
+        // This is crucial because setContent often breaks the readonly mode and the DOM highlights.
+        cachedOriginalContent = replacedContent;
+        restoreDefaultState(editor);
+        applyGapfillHighlight(editor);
+        registerClickHandler(editor);
+        editor.mode.set('readonly');
+
+        // Close the modal
+        modal.hide();
     });
 
     // Handle modal cleanup
@@ -226,15 +238,16 @@ const registerClickHandler = (editor) => {
             e.preventDefault();
             e.stopPropagation();
 
-            // Extract the text content (including brackets)
-            const fullText = target.textContent;
+            // Extract the full text including brackets (e.g., "[cat]")
+            const fullGapMarker = target.textContent;
 
-            // Extract just the content between brackets
-            const match = fullText.match(/\[([^\]]+)\]/);
-            const gapText = match ? match[1] : fullText;
+            // Extract just the content between brackets (e.g., "cat")
+            const match = fullGapMarker.match(/\[([^\]]+)\]/);
+            const gapText = match ? match[1] : fullGapMarker;
 
-            // Show modal dialog similar to the image
-            displayGapDialog(gapText);
+            // Show modal dialog
+            // Pass the editor instance and both marker types to the dialog
+            displayGapDialog(editor, fullGapMarker, gapText);
         }
     };
 
@@ -330,8 +343,6 @@ export const getSetup = async() => {
             },
             onSetup: (api) => {
                 // Initial setup ensures the button is enabled and reflects initial state.
-                // NOTE: We only need to check if it should be active; the enabling/disabling
-                // is handled within onAction now for reliability in readonly mode.
                 if (isGapfillModeActive) {
                     // If the mode is active when loaded, ensure the button is enabled and active.
                     api.setEnabled(true);
