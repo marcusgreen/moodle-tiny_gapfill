@@ -47,16 +47,13 @@ const getSettings = () => {
     const settingsdata = settingsInput?.value || "";
 
     if (settingsdata > "") {
-        try {
             const obj = JSON.parse(settingsdata);
             for (const o in obj) {
                 if (Object.prototype.hasOwnProperty.call(obj, o)) {
                     settings.push(obj[o]);
                 }
             }
-        } catch (error) {
-            console.error("Error parsing item settings:", error);
-        }
+
     }
     return settings;
 };

@@ -25,6 +25,7 @@ import {component, buttonName, icon} from 'tiny_gapfill/common';
 import ModalFactory from 'core/modal_factory';
 import ModalEvents from 'core/modal_events';
 import {getTinyMCE} from 'editor_tiny/loader';
+import Item from 'tiny_gapfill/Item';
 
 // 🛑 STATE VARIABLE: Tracks whether the custom mode is active.
 let isGapfillModeActive = false;
@@ -98,6 +99,7 @@ const applyGapfillHighlight = (editor) => {
  * with the encoded feedback, or when the process is cancelled.
  */
 const displayGapDialog = async(editor, fullGapMarker, gapText) => {
+
     // Get TinyMCE instance
     const tinymce = await getTinyMCE();
 
@@ -105,13 +107,15 @@ const displayGapDialog = async(editor, fullGapMarker, gapText) => {
     const bodyContent = `
         <div class="container-fluid">
             <div class="form-group row mb-3">
-                <label for="gapfill-feedback-correct" class="col-md-12 col-form-label font-weight-bold">Feedback for correct.</label>
+                <label for="gapfill-feedback-correct" class="col-md-12 col-form-label font-weight-bold">Feedback
+                    for correct.</label>
                 <div class="col-md-12">
                     <textarea id="gapfill-feedback-correct" class="form-control" rows="6"></textarea>
                 </div>
             </div>
             <div class="form-group row mb-3">
-                <label for="gapfill-feedback-incorrect" class="col-md-12 col-form-label font-weight-bold">Feedback for incorrect.</label>
+                <label for="gapfill-feedback-incorrect" class="col-md-12 col-form-label font-weight-bold">Feedback
+                    for incorrect.</label>
                 <div class="col-md-12">
                     <textarea id="gapfill-feedback-incorrect" class="form-control" rows="6"></textarea>
                 </div>
@@ -162,7 +166,8 @@ const displayGapDialog = async(editor, fullGapMarker, gapText) => {
         });
     });
 
-    // Handle save button (OK button clicked)
+    // Handle save button (OK button clicked) and write any contents
+    // of the form to the hidden itemsettings field as json
     modal.getRoot().on(ModalEvents.save, () => {
         // 1. Get content from TinyMCE editors
         const correctEditor = tinymce.get('gapfill-feedback-correct');
@@ -224,7 +229,7 @@ const displayGapDialog = async(editor, fullGapMarker, gapText) => {
         modal.destroy();
     });
 };
-
+let debugItem = null;
 /**
  * Register click event handler for gapfill items
  * @param {Object} editor - TinyMCE editor instance
@@ -233,8 +238,19 @@ const registerClickHandler = (editor) => {
     clickHandler = (e) => {
         const target = e.target;
 
+
         // Check if clicked element has the gapfill-clickable class
         if (target.classList.contains('gapfill-clickable')) {
+            // Get delimiter characters and create Item instance
+            const delimitchars = document.getElementById('id_delimitchars').value;
+
+            const item = new Item(target.innerHTML, delimitchars);
+            debugItem = item;
+            var itemsettings = item.getItemSettings(e.target);
+
+
+            //mavg
+            debugger;
             e.preventDefault();
             e.stopPropagation();
 
@@ -244,6 +260,7 @@ const registerClickHandler = (editor) => {
             // Extract just the content between brackets (e.g., "cat")
             const match = fullGapMarker.match(/\[([^\]]+)\]/);
             const gapText = match ? match[1] : fullGapMarker;
+
 
             // Show modal dialog
             // Pass the editor instance and both marker types to the dialog
