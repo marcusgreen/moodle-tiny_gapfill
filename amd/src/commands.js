@@ -102,6 +102,7 @@ const displayGapDialog = async(editor, fullGapMarker, gapText) => {
 
     // Get TinyMCE instance
     const tinymce = await getTinyMCE();
+    const itemsSettings = document.querySelector('#id_itemsettings');
 
     // Create modal body HTML with **TEXTAREAS** for feedback fields, as TinyMCE needs a selector target
     const bodyContent = `
@@ -177,38 +178,17 @@ const displayGapDialog = async(editor, fullGapMarker, gapText) => {
         const correctFeedback = correctEditor ? correctEditor.getContent({format: 'raw'}).trim() : '';
         const incorrectFeedback = incorrectEditor ? incorrectEditor.getContent({format: 'raw'}).trim() : '';
 
-        // 2. CONSTRUCT THE ENCODED GAP STRING
-        let encodedContent = gapText; // Start with the plain answer part
+        // 2. Create settings object and encode as JSON
+        const settings = {
+            correctFeedback: correctFeedback,
+            incorrectFeedback: incorrectFeedback
+        };
 
-        if (correctFeedback !== '') {
-            // Append Correct Feedback code: |cf:
-            encodedContent += '|cf:' + correctFeedback;
+        // 3. Write JSON to hidden itemsettings field
+        const itemSettingsField = document.querySelector('#id_itemsettings');
+        if (itemSettingsField) {
+            itemSettingsField.value = JSON.stringify(settings);
         }
-        if (incorrectFeedback !== '') {
-            // Append Incorrect Feedback code: |if:
-            encodedContent += '|if:' + incorrectFeedback;
-        }
-
-        // The final encoded marker, including brackets:
-        const newFullMarker = '[' + encodedContent + ']'; // e.g., [cat|cf:Good job!|if:Try again.]
-
-        // 3. REPLACE THE OLD MARKER IN THE TINYMCE EDITOR
-        let currentContent = editor.getContent({format: 'raw'});
-
-        // Replace the *first* occurrence of the old marker with the new encoded marker.
-        // Since the highlighting is active, only the first occurrence should match the original.
-        let replacedContent = currentContent.replace(fullGapMarker, newFullMarker);
-
-        // Update the editor content
-        editor.setContent(replacedContent);
-
-        // 4. Update state and restore/re-apply highlight mode
-        // This is crucial because setContent often breaks the readonly mode and the DOM highlights.
-        cachedOriginalContent = replacedContent;
-        restoreDefaultState(editor);
-        applyGapfillHighlight(editor);
-        registerClickHandler(editor);
-        editor.mode.set('readonly');
 
         // Close the modal
         modal.hide();
