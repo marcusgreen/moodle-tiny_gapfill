@@ -125,7 +125,7 @@ export class Item {
         };
         this.instance = 0;
 
-        const correctEditableEl = document.getElementById("id_corecteditable");
+        const correctEditableEl = document.getElementById("id_correcteditable");
         const incorrectEditableEl = document.getElementById("id_incorrecteditable");
 
         this.feedback.correct = correctEditableEl?.innerHTML || "";

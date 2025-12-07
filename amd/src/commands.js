@@ -86,6 +86,7 @@ const applyGapfillHighlight = (editor) => {
         }
     });
 };
+const itemsSettings = document.querySelector('#id_itemsettings');
 
 /**
  * Display a modal dialog to allow the user to edit the individual feedback settings for a specific gap.
@@ -102,7 +103,18 @@ const displayGapDialog = async(editor, fullGapMarker, gapText) => {
 
     // Get TinyMCE instance
     const tinymce = await getTinyMCE();
-    const itemsSettings = document.querySelector('#id_itemsettings');
+
+    // Read existing itemsettings from the hidden field
+   const itemSettingsField = document.querySelector('#id_itemsettings');
+   let existingSettings = {};
+   if (itemSettingsField && itemSettingsField.value) {
+       try {
+           existingSettings = JSON.parse(itemSettingsField.value);
+       } catch (e) {
+           // If parsing fails, start with empty object
+           existingSettings = {};
+       }
+   }
 
     // Create modal body HTML with **TEXTAREAS** for feedback fields, as TinyMCE needs a selector target
     const bodyContent = `
@@ -167,32 +179,36 @@ const displayGapDialog = async(editor, fullGapMarker, gapText) => {
         });
     });
 
-    // Handle save button (OK button clicked) and write any contents
-    // of the form to the hidden itemsettings field as json
-    modal.getRoot().on(ModalEvents.save, () => {
-        // 1. Get content from TinyMCE editors
-        const correctEditor = tinymce.get('gapfill-feedback-correct');
-        const incorrectEditor = tinymce.get('gapfill-feedback-incorrect');
+   // Handle save button (OK button clicked) and write any contents
+   // of the form to the hidden itemsettings field as json
+   modal.getRoot().on(ModalEvents.save, () => {
+       // 1. Get content from TinyMCE editors
+       const correctEditor = tinymce.get('gapfill-feedback-correct');
+       const incorrectEditor = tinymce.get('gapfill-feedback-incorrect');
+       // Get content and ensure it's clean HTML (using 'raw' format for cleaner content)
+       const correctFeedback = correctEditor ? correctEditor.getContent({format: 'raw'}).trim() : '';
+       const incorrectFeedback = incorrectEditor ? incorrectEditor.getContent({format: 'raw'}).trim() : '';
+       // 2. Create new feedback settings for this gap
+       const newFeedback = {
+           correctFeedback: correctFeedback,
+           incorrectFeedback: incorrectFeedback
+       };
 
-        // Get content and ensure it's clean HTML (using 'raw' format for cleaner content)
-        const correctFeedback = correctEditor ? correctEditor.getContent({format: 'raw'}).trim() : '';
-        const incorrectFeedback = incorrectEditor ? incorrectEditor.getContent({format: 'raw'}).trim() : '';
+       // 3. Merge new feedback with existing settings
+       const mergedSettings = {
+           ...existingSettings,
+           ...newFeedback
+       };
 
-        // 2. Create settings object and encode as JSON
-        const settings = {
-            correctFeedback: correctFeedback,
-            incorrectFeedback: incorrectFeedback
-        };
+       // 4. Write merged JSON back to hidden itemsettings field
+       const itemSettingsField = document.querySelector('#id_itemsettings');
+       if (itemSettingsField) {
+           itemSettingsField.value = JSON.stringify(mergedSettings);
+       }
+       // Close the modal
+       modal.hide();
+   });
 
-        // 3. Write JSON to hidden itemsettings field
-        const itemSettingsField = document.querySelector('#id_itemsettings');
-        if (itemSettingsField) {
-            itemSettingsField.value = JSON.stringify(settings);
-        }
-
-        // Close the modal
-        modal.hide();
-    });
 
     // Handle modal cleanup
     modal.getRoot().on(ModalEvents.hidden, () => {
@@ -230,7 +246,7 @@ const registerClickHandler = (editor) => {
 
 
             //mavg
-            debugger;
+
             e.preventDefault();
             e.stopPropagation();
 
