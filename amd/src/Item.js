@@ -7,17 +7,17 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+// along with Moodle. If not, see <http://www.gnu.org/licenses/>.
 
 /**
  * JavaScript code for the gapfill question type.
  *
- * @copyright  2017 Marcus Green
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright 2017 Marcus Green
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 /**
@@ -47,21 +47,136 @@ const getSettings = () => {
     const settingsdata = settingsInput?.value || "";
 
     if (settingsdata > "") {
-            const obj = JSON.parse(settingsdata);
-            for (const o in obj) {
-                if (Object.prototype.hasOwnProperty.call(obj, o)) {
-                    settings.push(obj[o]);
-                }
+        const obj = JSON.parse(settingsdata);
+        for (const o in obj) {
+            if (Object.prototype.hasOwnProperty.call(obj, o)) {
+                settings.push(obj[o]);
             }
+        }
 
     }
     return settings;
 };
 
 /**
+ * Converts a NodeList/HTMLCollection to a true Array.
+ * @param {NodeList|HTMLCollection} obj
+ * @return {Node[]}
+ */
+const toArray = (obj) => {
+    return Array.prototype.slice.call(obj);
+};
+
+// --- Exported Utility Method ---
+
+/**
+ * Recursively wraps text nodes containing gaps (delimited content) with span elements.
+ * These spans are given unique IDs for the item settings feature.
+ *
+ * @param {HTMLElement} el - The root element to process (e.g., TinyMCE editor body).
+ * @param {number} [initialCount=0] - The starting index for item counting.
+ * @param {Array<string>} [initialGaps=[]] - The list of previously seen gap texts.
+ * @returns {void}
+ */
+export const wrapContent = (function() {
+    // This private scope helps manage state across recursive calls.
+    let count = 0;
+    let gaps = [];
+
+    const skipTags = {
+        script: true,
+        button: true,
+        input: true,
+        select: true,
+        textarea: true,
+        option: true,
+    };
+
+    return function(el) {
+        // Reset counter and array if processing the main canvas/body
+        if (el.id === 'id_itemsettings_canvas' || el.tagName.toLowerCase() === 'body') {
+            count = 0;
+            gaps = [];
+        }
+
+        const nodes = toArray(el.childNodes);
+        const delimiterChars = document.getElementById('id_delimitchars').value;
+        const leftDelimiter = delimiterChars.substring(0, 1);
+        const rightDelimiter = delimiterChars.substring(1, 2);
+
+        // Regex to find and split on the delimited gaps: /(\[.*?\])/g
+        const gapRegex = new RegExp('(\\' + leftDelimiter + '.*?\\' + rightDelimiter + ')', 'g');
+        const spanTemplate = document.createElement('span');
+
+        for (let i = 0, iLen = nodes.length; i < iLen; i++) {
+            const node = nodes[i];
+
+            if (node.nodeType === 1 && !(node.tagName.toLowerCase() in skipTags)) {
+                // Element node: recurse
+                wrapContent(node);
+            } else if (node.nodeType === 3) {
+                // Text node: process for gaps
+                const textChunks = node.data.split(gapRegex);
+                const fragment = document.createDocumentFragment();
+
+                for (let j = 0, jLen = textChunks.length; j < jLen; j++) {
+                    const chunk = textChunks[j];
+                    if (!chunk) {
+                        continue;
+                    }
+
+                    if (gapRegex.test(chunk)) {
+                        // This chunk is a gap: wrap it
+                        const gapSpan = spanTemplate.cloneNode(false);
+                        count++;
+                        gapSpan.className = 'item gapfill-clickable'; // Added gapfill-clickable class
+
+                        const item = new Item(chunk, delimiterChars);
+                        if (item.gaptext) {
+                            let instance = 0;
+                            // Calculate instance number for repeated gaps
+                            for (let k = 0; k < gaps.length; ++k) {
+                                if (gaps[k] === item.gaptext) {
+                                    instance++;
+                                }
+                            }
+
+                            // Set unique ID for the gap: id[count]_[instance]
+                            const itemId = 'id' + count + '_' + instance;
+                            gapSpan.id = itemId;
+
+                            // Check for existing feedback to set CSS classes
+                            const itemSettings = item.getItemSettings(gapSpan);
+                            if (item.striptags(itemSettings.correctfeedback)) {
+                                gapSpan.className += ' hascorrect';
+                            }
+                            if (item.striptags(itemSettings.incorrectfeedback)) {
+                                gapSpan.className += ' hasnocorrect';
+                            }
+
+                            gaps.push(item.gaptext);
+                        }
+                        gapSpan.appendChild(document.createTextNode(chunk));
+                        fragment.appendChild(gapSpan);
+                    } else {
+                        // This chunk is regular text
+                        fragment.appendChild(document.createTextNode(chunk));
+                    }
+                }
+                // Replace the original text node with the fragment
+                node.parentNode.replaceChild(fragment, node);
+            }
+        }
+    };
+})();
+
+
+/**
  * Item class for managing gap fill items
  */
 export class Item {
+    // ... (existing properties remain the same) ...
+
     /** @type {string|null} */
     questionid;
 
