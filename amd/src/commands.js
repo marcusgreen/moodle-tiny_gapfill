@@ -197,6 +197,7 @@ const displayGapDialog = async(editor, fullGapMarker, gapText, targetElement) =>
        const incorrectFeedback = incorrectEditor ? incorrectEditor.getContent({format: 'raw'}).trim() : '';
        // 2. Create new feedback settings for this gap
        const newFeedback = {
+           itemid: currentItem.itemid+ '_' +currentItem.instance,
            question: currentItem.questionid,
            correctFeedback: correctFeedback,
            incorrectFeedback: incorrectFeedback
@@ -251,7 +252,7 @@ const registerClickHandler = (editor) => {
             // Get delimiter characters and create Item instance
             const delimitchars = document.getElementById('id_delimitchars').value;
 
-            currentItem = new Item(target.innerHTML, delimitchars);
+            currentItem = new Item(target.innerHTML, delimitchars, e);
 
 
             e.preventDefault();
