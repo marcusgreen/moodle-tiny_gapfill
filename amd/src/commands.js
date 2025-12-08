@@ -167,7 +167,7 @@ const displayGapDialog = async(editor, fullGapMarker, gapText, targetElement) =>
             plugins: 'lists link',
             setup: (ed) => {
                 ed.on('init', () => {
-                    ed.setContent('');
+                    ed.setContent(itemSettings.correctfeedback);
                 });
             }
         });
@@ -180,7 +180,7 @@ const displayGapDialog = async(editor, fullGapMarker, gapText, targetElement) =>
             plugins: 'lists link',
             setup: (ed) => {
                 ed.on('init', () => {
-                    ed.setContent('');
+                    ed.setContent(itemSettings.incorrectfeedback);
                 });
             }
         });
