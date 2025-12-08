@@ -199,10 +199,11 @@ modal.getRoot().on(ModalEvents.save, () => {
     // 2. Create new feedback settings for this gap
     const itemKey = currentItem.itemid + '_' + currentItem.instance;
     const newFeedback = {
+        gaptext: currentItem.gaptextNodelim,
         itemid: itemKey,
         questionid: currentItem.questionid,
-        correctFeedback: correctFeedback,
-        incorrectFeedback: incorrectFeedback
+        correctfeedback: correctFeedback,
+        incorrectfeedback: incorrectFeedback
     };
 
     // 3. Parse existing settings as array, find and update or add the item
