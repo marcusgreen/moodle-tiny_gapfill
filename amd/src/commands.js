@@ -186,37 +186,52 @@ const displayGapDialog = async(editor, fullGapMarker, gapText, targetElement) =>
         });
     });
 
-   // Handle save button (OK button clicked) and write any contents
-   // of the form to the hidden itemsettings field as json
-   modal.getRoot().on(ModalEvents.save, () => {
-       // 1. Get content from TinyMCE editors
-       const correctEditor = tinymce.get('gapfill-feedback-correct');
-       const incorrectEditor = tinymce.get('gapfill-feedback-incorrect');
-       // Get content and ensure it's clean HTML (using 'raw' format for cleaner content)
-       const correctFeedback = correctEditor ? correctEditor.getContent({format: 'raw'}).trim() : '';
-       const incorrectFeedback = incorrectEditor ? incorrectEditor.getContent({format: 'raw'}).trim() : '';
-       // 2. Create new feedback settings for this gap
-       const newFeedback = {
-           itemid: currentItem.itemid+ '_' +currentItem.instance,
-           question: currentItem.questionid,
-           correctFeedback: correctFeedback,
-           incorrectFeedback: incorrectFeedback
-       };
+  // Handle save button (OK button clicked) and write any contents
+// of the form to the hidden itemsettings field as json
+modal.getRoot().on(ModalEvents.save, () => {
+    // 1. Get content from TinyMCE editors
+    const correctEditor = tinymce.get('gapfill-feedback-correct');
+    const incorrectEditor = tinymce.get('gapfill-feedback-incorrect');
+    // Get content and ensure it's clean HTML (using 'raw' format for cleaner content)
+    const correctFeedback = correctEditor ? correctEditor.getContent({format: 'raw'}).trim() : '';
+    const incorrectFeedback = incorrectEditor ? incorrectEditor.getContent({format: 'raw'}).trim() : '';
 
-       // 3. Merge new feedback with existing settings
-       const mergedSettings = {
-           ...existingSettings,
-           ...newFeedback
-       };
+    // 2. Create new feedback settings for this gap
+    const itemKey = currentItem.itemid + '_' + currentItem.instance;
+    const newFeedback = {
+        itemid: itemKey,
+        questionid: currentItem.questionid,
+        correctFeedback: correctFeedback,
+        incorrectFeedback: incorrectFeedback
+    };
 
-       // 4. Write merged JSON back to hidden itemsettings field
-       const itemSettingsField = document.querySelector('#id_itemsettings');
-       if (itemSettingsField) {
-           itemSettingsField.value = JSON.stringify(mergedSettings);
-       }
-       // Close the modal
-       modal.hide();
-   });
+    // 3. Parse existing settings as array, find and update or add the item
+    let settingsArray = [];
+    try {
+        settingsArray = Array.isArray(existingSettings) ? existingSettings : [];
+    } catch (e) {
+        settingsArray = [];
+    }
+
+    // Find if this item already exists in the array
+    const existingIndex = settingsArray.findIndex(item => item.itemid === itemKey);
+
+    if (existingIndex !== -1) {
+        // Update existing item
+        settingsArray[existingIndex] = newFeedback;
+    } else {
+        // Add new item
+        settingsArray.push(newFeedback);
+    }
+
+    // 4. Write merged JSON back to hidden itemsettings field
+    const itemSettingsField = document.querySelector('#id_itemsettings');
+    if (itemSettingsField) {
+        itemSettingsField.value = JSON.stringify(settingsArray);
+    }
+    // Close the modal
+    modal.hide();
+});
 
 
     // Handle modal cleanup
