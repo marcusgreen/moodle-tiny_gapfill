@@ -23,6 +23,7 @@
 
 import {getTinyMCE} from 'editor_tiny/loader';
 import {getPluginMetadata} from 'editor_tiny/utils';
+import {getPluginOptionName} from 'editor_tiny/options';
 
 import {component, pluginName} from './common';
 import {getSetup as getCommandSetup} from './commands';
@@ -46,6 +47,12 @@ export default new Promise(async(resolve) => {
 
     // Reminder: Any asynchronous code must be run before this point.
     tinyMCE.PluginManager.add(pluginName, (editor) => {
+        // Load the CSS file directly
+        editor.on('init', () => {
+            const cssUrl = (M.cfg && M.cfg.wwwroot ? M.cfg.wwwroot : '') + '/lib/editor/tiny/plugins/gapfill/styles.css';
+            editor.dom.loadCSS(cssUrl);
+        });
+
         // Register options.
         registerOptions(editor);
 
