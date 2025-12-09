@@ -230,6 +230,26 @@ modal.getRoot().on(ModalEvents.save, () => {
     if (itemSettingsField) {
         itemSettingsField.value = JSON.stringify(settingsArray);
     }
+
+    // Update classes on the target span based on saved feedback
+    try {
+        const targetEl = targetElement;
+        if (targetEl && targetEl.classList) {
+            if (correctFeedback && correctFeedback.length > 0) {
+                targetEl.classList.add('hascorrect');
+            } else {
+                targetEl.classList.remove('hascorrect');
+            }
+            if (incorrectFeedback && incorrectFeedback.length > 0) {
+                targetEl.classList.add('hasnocorrect');
+            } else {
+                targetEl.classList.remove('hasnocorrect');
+            }
+        }
+    } catch (err) {
+        // If anything goes wrong updating the DOM, silently continue.
+    }
+
     // Close the modal
     modal.hide();
 });
