@@ -26,7 +26,7 @@ defined('MOODLE_INTERNAL') || die();
 
 $plugin->component    = 'tiny_gapfill';
 $plugin->release      = '1.0';
-$plugin->version      = 2025120500;
+$plugin->version      = 2025120501;
 $plugin->requires     = 2025041400;
 $plugin->supported    = [500, 501];
 $plugin->maturity     = MATURITY_STABLE;

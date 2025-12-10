@@ -47,7 +47,7 @@ let currentItem = null;
 const applyGapfillHighlight = (editor) => {
     const body = editor.getBody();
     // 1. Set the overall editor body background to Grey (this covers all surrounding text and spaces)
-    body.style.backgroundColor = '#e0e0e0';
+    body.classList.add('tinybackground');
     const walker = document.createTreeWalker(
         body,
         NodeFilter.SHOW_TEXT,
@@ -331,8 +331,8 @@ const restoreDefaultState = (editor) => {
     // 1. Restore the original HTML content to clean up inserted spans
     editor.setContent(cachedOriginalContent);
 
-    // 2. Restore the editor body's default background
-    editor.getBody().style.backgroundColor = '';
+    // 2. Restore the editor body's default background by removing the tinybackground class
+    editor.getBody().classList.remove('tinybackground');
 
     // 3. Remove click handler
     unregisterClickHandler(editor);
