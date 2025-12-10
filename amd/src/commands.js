@@ -22,22 +22,13 @@
 import {getButtonImage} from 'editor_tiny/utils';
 import {get_string as getString} from 'core/str';
 import {component, buttonName, icon} from 'tiny_gapfill/common';
-import ModalFactory from 'core/modal_factory';
-import ModalEvents from 'core/modal_events';
-import {getTinyMCE} from 'editor_tiny/loader';
-import Item, {wrapContent} from 'tiny_gapfill/Item'; // <--- MODIFIED IMPORT
+import {wrapContent} from 'tiny_gapfill/Item'; // <--- MODIFIED IMPORT
 
 // 🛑 STATE VARIABLE: Tracks whether the custom mode is active.
 let isGapfillModeActive = false;
 
 // 💾 CACHE: Store the clean, original HTML before highlighting.
 let cachedOriginalContent = '';
-
-// 🎯 CLICK HANDLER: Store reference to the click handler for cleanup
-let clickHandler = null;
-
-// 📦 CURRENT ITEM: Store the current Item instance to share between functions
-let currentItem = null;
 
 /**
  * Apply inverse highlighting to text nodes (grey background for all, white for gaps)
@@ -48,279 +39,7 @@ const applyGapfillHighlight = (editor) => {
     const body = editor.getBody();
     // 1. Set the overall editor body background to Grey (this covers all surrounding text and spaces)
     body.classList.add('tinybackground');
-    const walker = document.createTreeWalker(
-        body,
-        NodeFilter.SHOW_TEXT,
-        null,
-        false
-    );
-    const nodesToProcess = [];
-    let node;
-    // Collect all text nodes
-    node = walker.nextNode();
-    while (node) {
-        nodesToProcess.push(node);
-        node = walker.nextNode();
-    }
 
-    let itemCounter = 1;
-
-    // Process each text node
-    nodesToProcess.forEach(textNode => {
-        const text = textNode.textContent;
-        const regex = /\[([^\]]+)\]/g;
-        if (regex.test(text)) {
-            // Create a temporary container
-            const span = document.createElement('span');
-            // 2. Set the background of the bracketed content to WHITE and add clickable class with item ID
-            span.innerHTML = text.replace(/\[([^\]]+)\]/g, (match) => {
-                const itemId = `id${itemCounter}`;
-                itemCounter++;
-                return `<span class="gapfill-highlight gapfill-clickable item" id="${itemId}" style="background-color: white; cursor: pointer;">${match}</span>`;
-            });
-            // Replace the text node with the new content
-            const parent = textNode.parentNode;
-            while (span.firstChild) {
-                parent.insertBefore(span.firstChild, textNode);
-            }
-            parent.removeChild(textNode);
-        }
-    });
-};
-const itemsSettings = document.querySelector('#id_itemsettings');
-
-/**
- * Display a modal dialog to allow the user to edit the individual feedback settings for a specific gap.
- *
- * @async
- * @param {Object} editor - The TinyMCE editor instance that contains the question content.
- * @param {string} fullGapMarker - The complete, unencoded gap marker string currently in the editor (e.g., '[cat]').
-*  @param {string} targetElement = The element that was clicked on
-* This is used to target the exact string for replacement after encoding.
- * @param {string} gapText - The text content or answer part extracted from between the brackets (e.g., 'cat').
- * @returns {Promise<void>} A Promise that resolves when the modal is closed and the editor content has been updated
- * with the encoded feedback, or when the process is cancelled.
- */
-const displayGapDialog = async(editor, fullGapMarker, gapText, targetElement) => {
-
-    // Get TinyMCE instance
-    const tinymce = await getTinyMCE();
-
-    // Read existing itemsettings from the hidden field
-   const itemSettingsField = document.querySelector('#id_itemsettings');
-   let existingSettings = {};
-   if (itemSettingsField && itemSettingsField.value) {
-       try {
-           existingSettings = JSON.parse(itemSettingsField.value);
-       } catch (e) {
-           // If parsing fails, start with empty object
-           existingSettings = {};
-       }
-   }
-
-      // 🔧 FIX: Get item settings using the currentItem instance
-    let itemSettings = {};
-    if (currentItem) {
-        itemSettings = currentItem.getItemSettings(targetElement);
-    }
-    // Create modal body HTML with **TEXTAREAS** for feedback fields, as TinyMCE needs a selector target
-    const bodyContent = `
-        <div class="container-fluid">
-            <div class="form-group row mb-3">
-                <label for="gapfill-feedback-correct" class="col-md-12 col-form-label font-weight-bold">Feedback
-                    for correct.</label>
-                <div class="col-md-12">
-                    <textarea id="gapfill-feedback-correct" class="form-control" rows="6"></textarea>
-                </div>
-            </div>
-            <div class="form-group row mb-3">
-                <label for="gapfill-feedback-incorrect" class="col-md-12 col-form-label font-weight-bold">Feedback
-                    for incorrect.</label>
-                <div class="col-md-12">
-                    <textarea id="gapfill-feedback-incorrect" class="form-control" rows="6"></textarea>
-                </div>
-            </div>
-        </div>
-    `;
-
-    // Create and show modal using ModalFactory
-    const modal = await ModalFactory.create({
-        type: ModalFactory.types.SAVE_CANCEL,
-        title: `Add Gap settings: ${gapText}`,
-        body: bodyContent,
-        large: true,
-    });
-
-    // Show the modal
-    modal.show();
-
-    // After modal is shown, initialize TinyMCE editors for the feedback fields
-    modal.getRoot().on(ModalEvents.shown, async() => {
-        // Wait a moment for DOM to be ready
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        // Initialize TinyMCE for feedback correct
-        tinymce.init({
-            selector: '#gapfill-feedback-correct',
-            menubar: false,
-            toolbar: 'undo redo | formatselect | bold italic | bullist numlist | link unlink',
-            plugins: 'lists link',
-            setup: (ed) => {
-                ed.on('init', () => {
-                    ed.setContent(itemSettings.correctfeedback);
-                });
-            }
-        });
-
-        // Initialize TinyMCE for feedback incorrect
-        tinymce.init({
-            selector: '#gapfill-feedback-incorrect',
-            menubar: false,
-            toolbar: 'undo redo | formatselect | bold italic | bullist numlist | link unlink',
-            plugins: 'lists link',
-            setup: (ed) => {
-                ed.on('init', () => {
-                    ed.setContent(itemSettings.incorrectfeedback);
-                });
-            }
-        });
-    });
-
-  // Handle save button (OK button clicked) and write any contents
-// of the form to the hidden itemsettings field as json
-modal.getRoot().on(ModalEvents.save, () => {
-    // 1. Get content from TinyMCE editors
-    const correctEditor = tinymce.get('gapfill-feedback-correct');
-    const incorrectEditor = tinymce.get('gapfill-feedback-incorrect');
-    // Get content and ensure it's clean HTML (using 'raw' format for cleaner content)
-    const correctFeedback = correctEditor ? correctEditor.getContent({format: 'raw'}).trim() : '';
-    const incorrectFeedback = incorrectEditor ? incorrectEditor.getContent({format: 'raw'}).trim() : '';
-
-    // 2. Create new feedback settings for this gap
-    const itemKey = currentItem.itemid + '_' + currentItem.instance;
-    const newFeedback = {
-        gaptext: currentItem.gaptextNodelim,
-        itemid: itemKey,
-        questionid: currentItem.questionid,
-        correctfeedback: correctFeedback,
-        incorrectfeedback: incorrectFeedback
-    };
-
-    // 3. Parse existing settings as array, find and update or add the item
-    let settingsArray = [];
-    try {
-        settingsArray = Array.isArray(existingSettings) ? existingSettings : [];
-    } catch (e) {
-        settingsArray = [];
-    }
-
-    // Find if this item already exists in the array
-    const existingIndex = settingsArray.findIndex(item => item.itemid === itemKey);
-
-    if (existingIndex !== -1) {
-        // Update existing item
-        settingsArray[existingIndex] = newFeedback;
-    } else {
-        // Add new item
-        settingsArray.push(newFeedback);
-    }
-
-    // 4. Write merged JSON back to hidden itemsettings field
-    const itemSettingsField = document.querySelector('#id_itemsettings');
-    if (itemSettingsField) {
-        itemSettingsField.value = JSON.stringify(settingsArray);
-    }
-
-    // Update classes on the target span based on saved feedback
-    try {
-        const targetEl = targetElement;
-        if (targetEl && targetEl.classList) {
-            if (correctFeedback && correctFeedback.length > 0) {
-                targetEl.classList.add('hascorrect');
-            } else {
-                targetEl.classList.remove('hascorrect');
-            }
-            if (incorrectFeedback && incorrectFeedback.length > 0) {
-                targetEl.classList.add('hasnocorrect');
-            } else {
-                targetEl.classList.remove('hasnocorrect');
-            }
-        }
-    } catch (err) {
-        // If anything goes wrong updating the DOM, silently continue.
-    }
-
-    // Close the modal
-    modal.hide();
-});
-
-
-    // Handle modal cleanup
-    modal.getRoot().on(ModalEvents.hidden, () => {
-        // Clean up TinyMCE editors
-        const correctEditor = tinymce.get('gapfill-feedback-correct');
-        const incorrectEditor = tinymce.get('gapfill-feedback-incorrect');
-
-        if (correctEditor) {
-            correctEditor.remove();
-        }
-        if (incorrectEditor) {
-            incorrectEditor.remove();
-        }
-        modal.destroy();
-    });
-};
-let item = null;
-/**
- * Register click event handler for gapfill items
- * @param {Object} editor - TinyMCE editor instance
- */
-const registerClickHandler = (editor) => {
-    // Wrap content when editor initializes
-
-
-    clickHandler = (e) => {
-        const target = e.target;
-
-
-        // Check if clicked element has the gapfill-clickable class
-        if (target.classList.contains('gapfill-clickable')) {
-            // Get delimiter characters and create Item instance
-            const delimitchars = document.getElementById('id_delimitchars').value;
-
-            currentItem = new Item(target.innerHTML, delimitchars, e);
-
-
-            e.preventDefault();
-            e.stopPropagation();
-
-            // Extract the full text including brackets (e.g., "[cat]")
-            const fullGapMarker = target.textContent;
-
-            // Extract just the content between brackets (e.g., "cat")
-            const match = fullGapMarker.match(/\[([^\]]+)\]/);
-            const gapText = match ? match[1] : fullGapMarker;
-
-
-            // Show modal dialog
-            // Pass the editor instance and both marker types to the dialog
-            displayGapDialog(editor, fullGapMarker, gapText, target);
-        }
-    };
-
-    // Add click event listener to editor body
-    editor.getBody().addEventListener('click', clickHandler);
-};
-
-/**
- * Unregister click event handler
- * @param {Object} editor - TinyMCE editor instance
- */
-const unregisterClickHandler = (editor) => {
-    if (clickHandler) {
-        editor.getBody().removeEventListener('click', clickHandler);
-        clickHandler = null;
-    }
 };
 
 /**
@@ -333,10 +52,6 @@ const restoreDefaultState = (editor) => {
 
     // 2. Restore the editor body's default background by removing the tinybackground class
     editor.getBody().classList.remove('tinybackground');
-
-    // 3. Remove click handler
-    unregisterClickHandler(editor);
-    currentItem = null;
 };
 
 
@@ -374,13 +89,10 @@ export const getSetup = async() => {
                     // 2. Apply highlighting (modifies the DOM)
                     applyGapfillHighlight(editor);
 
-                    // 3. Register click handler for bracketed content
-                    registerClickHandler(editor);
-
-                    // 4. SET READ-ONLY MODE (This is the only reliable way to disable typing)
+                    // 3. SET READ-ONLY MODE (This is the only reliable way to disable typing)
                     editor.mode.set('readonly');
 
-                    // 5. FIX: Re-enable the button immediately after TinyMCE disables it.
+                    // 4. FIX: Re-enable the button immediately after TinyMCE disables it.
                     api.setEnabled(true);
 
                     isGapfillModeActive = true;
@@ -423,9 +135,8 @@ export const getSetup = async() => {
                     // ACTIVATE MODE
                     cachedOriginalContent = editor.getContent();
                     applyGapfillHighlight(editor);
-                    registerClickHandler(editor);
                     editor.mode.set('readonly'); // Disable typing
-                    item.wrapContent(editor.getBody());
+                    wrapContent(editor.getBody());
                     // No need to re-enable menu items, only toolbar buttons.
                     isGapfillModeActive = true;
                 } else {
