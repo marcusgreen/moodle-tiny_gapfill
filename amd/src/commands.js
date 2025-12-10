@@ -90,7 +90,7 @@ export const getSetup = async() => {
                     applyGapfillHighlight(editor);
 
                     // 3. SET READ-ONLY MODE (This is the only reliable way to disable typing)
-                    editor.mode.set('readonly');
+                   // editor.mode.set('readonly');
 
                     // 4. FIX: Re-enable the button immediately after TinyMCE disables it.
                     api.setEnabled(true);
