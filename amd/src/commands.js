@@ -109,13 +109,7 @@ const applyGapfillHighlight = (editor) => {
     const editableDiv = document.createElement('div');
     editableDiv.id = editor.id + '_editable';
     editableDiv.contentEditable = 'true';
-    editableDiv.style.width = '100%';
-    editableDiv.style.height = '300px';
-    editableDiv.style.border = '1px solid #ccc';
-    editableDiv.style.padding = '10px';
-    editableDiv.style.boxSizing = 'border-box';
-    editableDiv.style.backgroundColor = '#fff';
-    editableDiv.style.display = 'block';
+    editableDiv.className = 'clickarea';
 
     // Copy the text from the TinyMCE editor into the editable div
     const editorContent = editor.getContent();
