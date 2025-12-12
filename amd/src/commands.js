@@ -119,13 +119,7 @@ const applyGapfillHighlight = (editor) => {
     // Add a close button
     const closeButton = document.createElement('button');
     closeButton.textContent = 'Close';
-    closeButton.style.marginTop = '10px';
-    closeButton.style.padding = '5px 10px';
-    closeButton.style.backgroundColor = '#007bff';
-    closeButton.style.color = 'white';
-    closeButton.style.border = 'none';
-    closeButton.style.borderRadius = '3px';
-    closeButton.style.cursor = 'pointer';
+    closeButton.className = 'btn btn-secondary';
     closeButton.onclick = () => {
         // Restore TinyMCE when close button is clicked
         restoreDefaultState(editor);
