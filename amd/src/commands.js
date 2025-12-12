@@ -22,7 +22,9 @@
 import {getButtonImage} from 'editor_tiny/utils';
 import {get_string as getString} from 'core/str';
 import {component, buttonName, icon} from 'tiny_gapfill/common';
-import {wrapContent} from 'tiny_gapfill/Item'; // <--- MODIFIED IMPORT
+import {wrapContent} from 'tiny_gapfill/Item';
+import ModalFactory from 'core/modal_factory';
+import ModalEvents from 'core/modal_events';
 
 // 🛑 STATE VARIABLE: Tracks whether the custom mode is active.
 let isGapfillModeActive = false;
@@ -106,20 +108,30 @@ const applyGapfillHighlight = (editor) => {
 
     // Create a new editable div in the position where TinyMCE was previously
     const container = editor.getContainer();
-    const editableDiv = document.createElement('div');
-    editableDiv.id = editor.id + '_editable';
-    editableDiv.contentEditable = 'true';
-    editableDiv.className = 'clickarea';
+    const clickArea = document.createElement('div');
+    clickArea.id = editor.id + '_editable';
+    clickArea.contentEditable = 'true';
+    clickArea.className = 'clickarea';
 
     // Copy the text from the TinyMCE editor into the editable div
     const editorContent = editor.getContent();
     const processedContent = processGapfillContent(editorContent);
-    editableDiv.innerHTML = processedContent;
+    clickArea.innerHTML = processedContent;
+
+    // Create a header div at the top of clickArea
+    const headerDiv = document.createElement('div');
+    headerDiv.style.width = '100%';
+    headerDiv.style.height = '40px';
+    headerDiv.style.backgroundColor = '#f8f9fa';
+    headerDiv.style.borderBottom = '1px solid #dee2e6';
+    headerDiv.style.padding = '5px';
+    headerDiv.style.boxSizing = 'border-box';
 
     // Add a close button
     const closeButton = document.createElement('button');
     closeButton.textContent = 'Close';
-    closeButton.className = 'btn btn-secondary';
+    closeButton.className = 'btn btn-secondary closebutton';
+    closeButton.style.float = 'left';
     closeButton.onclick = () => {
         // Restore TinyMCE when close button is clicked
         restoreDefaultState(editor);
@@ -127,15 +139,27 @@ const applyGapfillHighlight = (editor) => {
         isGapfillModeActive = false;
 
         // Remove the editable div
-        editableDiv.remove();
+        clickArea.remove();
 
         // Show TinyMCE again
         editor.getContainer().style.display = 'block';
     };
 
-    // Insert the editable div in place of TinyMCE
-    container.parentNode.insertBefore(editableDiv, container.nextSibling);
-    editableDiv.appendChild(closeButton);
+    // Add click event listener to show modal when clickArea is clicked
+    clickArea.addEventListener('click', (event) => {
+        // Check if the click target is a span (gap)
+        if (event.target.tagName === 'SPAN') {
+            const gapText = event.target.textContent;
+            showGapSettingsModal(gapText);
+        }
+    });
+
+// Insert the editable div in place of TinyMCE
+      container.parentNode.insertBefore(clickArea, container.nextSibling);
+      // Insert the header div at the top of clickArea
+      clickArea.insertBefore(headerDiv, clickArea.firstChild);
+      // Insert the close button in the clickArea (not in the header div)
+      clickArea.appendChild(closeButton);
 };
 
 /**
@@ -150,6 +174,41 @@ const restoreDefaultState = (editor) => {
     editor.getBody().classList.remove('tinybackground');
 };
 
+/**
+ * Show gap settings modal for a specific gap
+ * @param {string} gapText - The text content of the gap
+ */
+const showGapSettingsModal = async(gapText) => {
+    const bodyContent = `
+        <div class="container-fluid">
+            <div class="form-group row mb-3">
+                <label for="gapfill-feedback-correct" class="col-md-12 col-form-label font-weight-bold">Feedback
+                    for correct.</label>
+                <div class="col-md-12">
+                    <textarea id="gapfill-feedback-correct" class="form-control" rows="6"></textarea>
+                </div>
+            </div>
+            <div class="form-group row mb-3">
+                <label for="gapfill-feedback-incorrect" class="col-md-12 col-form-label font-weight-bold">Feedback
+                    for incorrect.</label>
+                <div class="col-md-12">
+                    <textarea id="gapfill-feedback-incorrect" class="form-control" rows="6"></textarea>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Create and show modal using ModalFactory
+    const modal = await ModalFactory.create({
+        type: ModalFactory.types.SAVE_CANCEL,
+        title: `Add Gap settings: ${gapText}`,
+        body: bodyContent,
+        large: true,
+    });
+
+    // Show the modal
+    modal.show();
+};
 
 export const getSetup = async() => {
     const [
