@@ -25,6 +25,7 @@ import {component, buttonName, icon} from 'tiny_gapfill/common';
 import {wrapContent} from 'tiny_gapfill/Item';
 import ModalFactory from 'core/modal_factory';
 import ModalEvents from 'core/modal_events';
+import {tinymce} from 'editor_tiny/loader';
 
 // 🛑 STATE VARIABLE: Tracks whether the custom mode is active.
 let isGapfillModeActive = false;
@@ -208,6 +209,50 @@ const showGapSettingsModal = async(gapText) => {
 
     // Show the modal
     modal.show();
+
+    // After modal is shown, initialize TinyMCE editors for the feedback fields
+    modal.getRoot().on(ModalEvents.shown, async() => {
+        // Wait a moment for DOM to be ready
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        try {
+            // Get the TinyMCE instance from the global scope
+            const tinyMCE = window.tinymce || tinymce;
+
+            if (!tinyMCE) {
+                console.error('TinyMCE not found in global scope');
+                return;
+            }
+
+            // Initialize TinyMCE for feedback correct - this creates a new instance
+            await tinyMCE.init({
+                selector: '#gapfill-feedback-correct',
+                menubar: false,
+                toolbar: 'undo redo | formatselect | bold italic | bullist numlist | link unlink',
+                plugins: 'lists link',
+                setup: (ed) => {
+                    ed.on('init', () => {
+                        ed.setContent('Quite correct');
+                    });
+                }
+            });
+
+            // Initialize TinyMCE for feedback incorrect - this creates another new instance
+            await tinyMCE.init({
+                selector: '#gapfill-feedback-incorrect',
+                menubar: false,
+                toolbar: 'undo redo | formatselect | bold italic | bullist numlist | link unlink',
+                plugins: 'lists link',
+                setup: (ed) => {
+                    ed.on('init', () => {
+                        ed.setContent('Not Correct');
+                    });
+                }
+            });
+        } catch (error) {
+            console.error('Failed to initialize TinyMCE editors:', error);
+        }
+    });
 };
 
 export const getSetup = async() => {
