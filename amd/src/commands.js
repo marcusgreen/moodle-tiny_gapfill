@@ -31,6 +31,71 @@ let isGapfillModeActive = false;
 let cachedOriginalContent = '';
 
 /**
+ * Process text to wrap content within [ and ] delimiters with spans
+ * @param {string} content - The HTML content to process
+ * @returns {string} - The processed HTML content
+ */
+const processGapfillContent = (content) => {
+    // Create a temporary DOM element to parse the HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = content;
+
+    // Process all text nodes in the DOM
+    const walker = document.createTreeWalker(
+        tempDiv,
+        NodeFilter.SHOW_TEXT,
+        null,
+        false
+    );
+
+    const textNodes = [];
+    let node;
+    while ((node = walker.nextNode()) !== null) {
+        textNodes.push(node);
+    }
+
+    // Process each text node for gapfill patterns
+    textNodes.forEach(textNode => {
+        const text = textNode.textContent;
+        const regex = /\[([^\[\]]+)\]/g;
+        let match;
+        let lastIndex = 0;
+        const fragments = [];
+
+        while ((match = regex.exec(text)) !== null) {
+            // Add text before the match
+            if (match.index > lastIndex) {
+                fragments.push(document.createTextNode(text.substring(lastIndex, match.index)));
+            }
+
+            // Create span for the gapfill
+            const span = document.createElement('span');
+            span.id = `id${fragments.length}`;
+            span.textContent = match[0]; // Include the brackets
+            fragments.push(span);
+
+            lastIndex = regex.lastIndex;
+        }
+
+        // Add remaining text after the last match
+        if (lastIndex < text.length) {
+            fragments.push(document.createTextNode(text.substring(lastIndex)));
+        }
+
+        // Replace the text node with the processed fragments
+        if (fragments.length > 0) {
+            const parent = textNode.parentNode;
+            fragments.forEach(fragment => {
+                parent.insertBefore(fragment, textNode);
+            });
+            parent.removeChild(textNode);
+        }
+    });
+
+    return tempDiv.innerHTML;
+};
+
+/**
  * Apply inverse highlighting to text nodes (grey background for all, white for gaps)
  * This uses DOM traversal to preserve existing formatting
  * @param {Object} editor - TinyMCE editor instance
@@ -54,7 +119,8 @@ const applyGapfillHighlight = (editor) => {
 
     // Copy the text from the TinyMCE editor into the editable div
     const editorContent = editor.getContent();
-    editableDiv.innerHTML = editorContent;
+    const processedContent = processGapfillContent(editorContent);
+    editableDiv.innerHTML = processedContent;
 
     // Add a close button
     const closeButton = document.createElement('button');
