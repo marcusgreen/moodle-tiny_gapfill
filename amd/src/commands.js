@@ -224,6 +224,17 @@ const showGapSettingsModal = async(gapText) => {
                 return;
             }
 
+            // Clean up any existing TinyMCE instances for these elements
+            const correctEditor = tinyMCE.get('gapfill-feedback-correct');
+            if (correctEditor) {
+                correctEditor.remove();
+            }
+
+            const incorrectEditor = tinyMCE.get('gapfill-feedback-incorrect');
+            if (incorrectEditor) {
+                incorrectEditor.remove();
+            }
+
             // Initialize TinyMCE for feedback correct - this creates a new instance
             await tinyMCE.init({
                 selector: '#gapfill-feedback-correct',
@@ -251,6 +262,26 @@ const showGapSettingsModal = async(gapText) => {
             });
         } catch (error) {
             console.error('Failed to initialize TinyMCE editors:', error);
+        }
+    });
+
+    // Clean up TinyMCE instances when modal is hidden
+    modal.getRoot().on(ModalEvents.hidden, () => {
+        try {
+            const tinyMCE = window.tinymce || tinymce;
+            if (tinyMCE) {
+                const correctEditor = tinyMCE.get('gapfill-feedback-correct');
+                if (correctEditor) {
+                    correctEditor.remove();
+                }
+
+                const incorrectEditor = tinyMCE.get('gapfill-feedback-incorrect');
+                if (incorrectEditor) {
+                    incorrectEditor.remove();
+                }
+            }
+        } catch (error) {
+            console.error('Failed to cleanup TinyMCE editors:', error);
         }
     });
 };
