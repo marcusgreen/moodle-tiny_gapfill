@@ -36,10 +36,52 @@ let cachedOriginalContent = '';
  * @param {Object} editor - TinyMCE editor instance
  */
 const applyGapfillHighlight = (editor) => {
-    const body = editor.getBody();
-    // 1. Set the overall editor body background to Grey (this covers all surrounding text and spaces)
-    body.classList.add('tinybackground');
+    // Hide the TinyMCE instance by setting display to none
+    editor.getContainer().style.display = 'none';
 
+    // Create a new editable div in the position where TinyMCE was previously
+    const container = editor.getContainer();
+    const editableDiv = document.createElement('div');
+    editableDiv.id = editor.id + '_editable';
+    editableDiv.contentEditable = 'true';
+    editableDiv.style.width = '100%';
+    editableDiv.style.height = '300px';
+    editableDiv.style.border = '1px solid #ccc';
+    editableDiv.style.padding = '10px';
+    editableDiv.style.boxSizing = 'border-box';
+    editableDiv.style.backgroundColor = '#fff';
+    editableDiv.style.display = 'block';
+
+    // Copy the text from the TinyMCE editor into the editable div
+    const editorContent = editor.getContent();
+    editableDiv.innerHTML = editorContent;
+
+    // Add a close button
+    const closeButton = document.createElement('button');
+    closeButton.textContent = 'Close';
+    closeButton.style.marginTop = '10px';
+    closeButton.style.padding = '5px 10px';
+    closeButton.style.backgroundColor = '#007bff';
+    closeButton.style.color = 'white';
+    closeButton.style.border = 'none';
+    closeButton.style.borderRadius = '3px';
+    closeButton.style.cursor = 'pointer';
+    closeButton.onclick = () => {
+        // Restore TinyMCE when close button is clicked
+        restoreDefaultState(editor);
+        editor.mode.set('design');
+        isGapfillModeActive = false;
+
+        // Remove the editable div
+        editableDiv.remove();
+
+        // Show TinyMCE again
+        editor.getContainer().style.display = 'block';
+    };
+
+    // Insert the editable div in place of TinyMCE
+    container.parentNode.insertBefore(editableDiv, container.nextSibling);
+    editableDiv.appendChild(closeButton);
 };
 
 /**
