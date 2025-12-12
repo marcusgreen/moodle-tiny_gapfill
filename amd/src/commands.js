@@ -176,6 +176,25 @@ const restoreDefaultState = (editor) => {
 };
 
 /**
+ * Read existing itemsettings from the hidden field
+ * @returns {Object} The parsed item settings object
+ */
+const getItemSettings = () => {
+    const itemSettingsField = document.querySelector('#id_itemsettings');
+    let existingSettings = {};
+    if (itemSettingsField && itemSettingsField.value) {
+        try {
+            existingSettings = JSON.parse(itemSettingsField.value);
+        } catch (e) {
+            // If parsing fails, start with empty object
+            existingSettings = {};
+        }
+    }
+    return existingSettings;
+};
+
+
+/**
  * Show gap settings modal for a specific gap
  * @param {string} gapText - The text content of the gap
  */
@@ -210,6 +229,7 @@ const showGapSettingsModal = async(gapText) => {
     // Show the modal
     modal.show();
 
+
     // After modal is shown, initialize TinyMCE editors for the feedback fields
     modal.getRoot().on(ModalEvents.shown, async() => {
         // Wait a moment for DOM to be ready
@@ -235,6 +255,10 @@ const showGapSettingsModal = async(gapText) => {
                 incorrectEditor.remove();
             }
 
+            const settings = getItemSettings();
+            const firstKey = Object.keys(settings)[0];
+            const correctfeedback = settings[firstKey].correctfeedback;
+
             // Initialize TinyMCE for feedback correct - this creates a new instance
             await tinyMCE.init({
                 selector: '#gapfill-feedback-correct',
@@ -243,7 +267,7 @@ const showGapSettingsModal = async(gapText) => {
                 plugins: 'lists link',
                 setup: (ed) => {
                     ed.on('init', () => {
-                        ed.setContent('Quite correct');
+                        ed.setContent(correctfeedback);
                     });
                 }
             });
